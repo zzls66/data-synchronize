@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+git pull
+mvn clean && mvn package -Dapp.env=dev
+
+PID="$(ps -ef | grep cnhutong-binlog-1.0-dev.jar | grep -v 'grep' | awk '{print $2}')"
+
+[ ! -z "$PID" ] && kill -9 "$PID"
+
+CNHUTONG_BINLOG_ENV=dev
+java -jar cnhutong-binlog-1.0-dev.jar > log.text 2>&1
+
+BY_EXTRACT_BINLOG_ENV=prod nohup java -jar target/by-extract-binlog-1.0-prod.jar & > /dev/null 2>&1

@@ -1,0 +1,6 @@
+#ignore folder
+*.log
+target
+
+#ignore files
+data-synchronize.iml
