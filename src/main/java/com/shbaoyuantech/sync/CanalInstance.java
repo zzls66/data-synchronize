@@ -121,8 +121,8 @@ public class CanalInstance implements Runnable {
                     entry.getHeader().getSchemaName(), entry.getHeader().getTableName(),
                     eventType));
 
-            int company = dateBase.contains("guowen") ? CompanyConstant.GUOWEN_FLAG : (dateBase.contains("guoyi") ? CompanyConstant.GUOYI_FLAG : CompanyConstant.COMMON_FLAG);
-            DataSynchronize.synchronizeData(rowChange, entry, company);
+            int companyId = dateBase.contains("guowen") ? CompanyConstant.GUOWEN_FLAG : (dateBase.contains("guoyi") ? CompanyConstant.GUOYI_FLAG : CompanyConstant.COMMON_FLAG);
+            DataSynchronize.synchronizeData(rowChange, entry, companyId);
         }
     }
 

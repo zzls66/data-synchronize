@@ -17,6 +17,8 @@ public class ClassMetaConfiguration {
 
     private Map<String, Map<String, Map<String, Object>>> fieldConfiguration = new HashMap<>();
 
+    private Map<String, Map<String, Map<String, Object>>> redundantFieldConfiguration = new HashMap<>();
+
     public synchronized static ClassMetaConfiguration getInstance() {
         if (instance != null) {
             return instance;
@@ -32,9 +34,10 @@ public class ClassMetaConfiguration {
                 instance.tableMappingConfiguration.put(classAnno.table(), classAnno.collection());
                 instance.isCommonDataConfiguration.put(classAnno.table(), classAnno.isCommonData());
 
-                Field[] fields = null;
-                        //getAllFields(clazz);
+                List<Field> fields = getAllFields(clazz);
                 Map<String, Map<String, Object>> fieldConfigs = new HashMap<>();
+                Map<String, Map<String, Object>> redundantFieldConfigs = new HashMap<>();
+
                 for (Field field : fields) {
                     if (field.isAnnotationPresent(MappingColumn.class)) {
                         Map<String, Object> currentField = new HashMap<>();
@@ -44,11 +47,18 @@ public class ClassMetaConfiguration {
                         currentField.put("field", fieldAnno.field());
                         currentField.put("refCollection", fieldAnno.refCollection());
                         currentField.put("type", field.getType());
+                        currentField.put("isRedundant", fieldAnno.isRedundant());
+                        currentField.put("column", fieldAnno.column());
 
+                        if(fieldAnno.isRedundant()){
+                            redundantFieldConfigs.put(fieldAnno.field(), currentField);
+                            continue;
+                        }
                         fieldConfigs.put(fieldAnno.column(), currentField);
                     }
                 }
                 instance.fieldConfiguration.put(classAnno.table(), fieldConfigs);
+                instance.redundantFieldConfiguration.put(classAnno.table(), redundantFieldConfigs);
             }
         } catch (Exception e) {
             throw new BizException("error##ClassMetaConfiguration::init class meta information fail...", e);
@@ -56,15 +66,15 @@ public class ClassMetaConfiguration {
         return instance;
     }
 
-//    private static Field[] getAllFields(Class targetClass){
-//        ArrayList<Field> fieldList = new ArrayList<>();
-//        do {
-//            fieldList.addAll(Arrays.asList(targetClass.getDeclaredFields()));
-//            targetClass = targetClass.getSuperclass();
-//        } while(targetClass != null && targetClass != Object.class);
-//
-////        return fieldList.toArray(new Field[32]);
-//    }
+    private static List<Field> getAllFields(Class targetClass){
+        List<Field> list = new ArrayList<>();
+        do {
+            list.addAll(Arrays.asList(targetClass.getDeclaredFields()));
+            targetClass = targetClass.getSuperclass();
+        } while(targetClass != null && targetClass != Object.class);
+
+        return list;
+    }
 
     public Map<String, String> getTableMappingConfiguration() {
         return tableMappingConfiguration;
@@ -78,4 +88,5 @@ public class ClassMetaConfiguration {
         return fieldConfiguration;
     }
 
+    public Map<String, Map<String, Map<String, Object>>> getRedundantFieldConfiguration() { return redundantFieldConfiguration; }
 }

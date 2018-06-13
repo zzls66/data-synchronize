@@ -1,12 +1,9 @@
 package com.shbaoyuantech.config;
 
-import com.shbaoyuantech.commons.BizException;
 import com.shbaoyuantech.commons.DateUtils;
 import org.apache.commons.lang.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.util.CollectionUtils;
 
-import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
@@ -14,84 +11,54 @@ import java.util.Map;
 
 public class FieldConvertor {
 
-//    public parse(Class type, Object value) {
-//        if (value == null) {
-//            return;
-//        }
-////        switch (type.toString()) {
-////            case Integer.cl:
-////                System.out.println("xx");
-////                break;
-////        }
-//
-//        if (type == String.class) {
-//            return xxx;
-//        }
-//        if (type == String.class) {
-//            return xxx;
-//        }if (type == String.class) {
-//            return xxx;
-//        }if (type == String.class) {
-//            return xxx;
-//        }
-//
-//    }
+    public static void parse(Map<String, Object> result, Map<String, Object> params){
+         String value = (String) params.get("value");
+         if(StringUtils.isEmpty(value)){
+             return;
+         }
 
-    private static Map<Class, Method> parseMethodMap = new HashMap<>();
+         String fieldName = (String) params.get("fieldName");
+         Class type = (Class) params.get("type");
 
-    public synchronized static Map<Class, Method> getParseMethodMap(){
-        if(!CollectionUtils.isEmpty(parseMethodMap)){
-            return parseMethodMap;
-        }
+         if(type.equals(String.class)){
+            result.put(fieldName, value);
+         }
 
-        try{
-            Method[] methods = FieldConvertor.class.getDeclaredMethods();
-            for(Method method : methods){
-                parseMethodMap.put(method.getReturnType(), method);
-            }
-            parseMethodMap.put(int.class, parseMethodMap.get(Integer.class));
-            parseMethodMap.put(double.class, parseMethodMap.get(Double.class));
-            parseMethodMap.put(boolean.class, parseMethodMap.get(Boolean.class));
-        }catch (Exception e){
-            throw new BizException("error##FieldConvertor::init field conventor fail...", e);
-        }
-        return parseMethodMap;
+         if(type.equals(Integer.class) || type.equals(int.class)){
+            result.put(fieldName, Integer.parseInt(value));
+         }
+
+         if(type.equals(Boolean.class) || type.equals(boolean.class)){
+             result.put(fieldName, Integer.parseInt(value) > 0);
+         }
+
+         if(type.equals(Double.class) || type.equals(double.class)){
+             result.put(fieldName, parseDouble(value));
+         }
+
+         if(type.equals(Date.class)){
+            parseDate(result, value, fieldName);
+         }
+
+         if(type.equals(ObjectId.class)){
+             int companyId = (int) params.get("companyId");
+             String collName = (String) params.get("collName");
+             result.put(fieldName, parseObjectId(collName, companyId, value));
+         }
     }
 
-    public static String accessString(String value){
-        return value;
-    }
-
-    public static Integer accessInt(String value){
-        return StringUtils.isEmpty(value) ? null : Integer.parseInt(value);
-    }
-
-    public static Boolean accessBoolean(String value){
-        return StringUtils.isEmpty(value) ? null : Integer.parseInt(value) > 0;
-    }
-
-    public static Double accessDouble(String value){
-        if(StringUtils.isEmpty(value)){
-            return null;
-        }
+    private static Double parseDouble(String value){
         return new BigDecimal(value).setScale(1, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
-    public static ObjectId accessObjectId(String value, String collectionName, int company){
-        if(StringUtils.isEmpty(value)){
-            return null;
-        }
-        return MongoUtils.accessCurrentObjectId(Integer.parseInt(value), collectionName, company);
+    public static ObjectId parseObjectId(String collName, int companyId, final String value){
+        return MongoUtils.findObjectId(collName, companyId, new HashMap<String, Object>(){{ put("rowId", Integer.parseInt(value)); }});
     }
 
-    public static Date accessDate(String value, String fieldName, Map<String, Object> result){
-        if(StringUtils.isEmpty(value)){
-            return null;
-        }
+    private static void parseDate(Map<String, Object> result, String value, String fieldName){
+        ObjectId objectId = MongoUtils.findDateObjectId(value);
+        result.put(fieldName, DateUtils.transStr2Date(value));
 
-        ObjectId objectId = MongoUtils.accessDateObjectId(value);
-        String dateObjectIdName = fieldName.replace("Time", "Date");
-        result.put(dateObjectIdName + "_id", objectId);
-        return DateUtils.transStr2Date(value);
+        result.put(fieldName.replace("Time", "Date") + "_id", objectId);
     }
 }

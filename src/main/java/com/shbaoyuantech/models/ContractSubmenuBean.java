@@ -7,7 +7,7 @@ import org.bson.types.ObjectId;
 @MappingBean(table = "by_contract_submenu", collection = "fact_contract_allocated", isCommonData = false)
 public class ContractSubmenuBean extends BaseBean{
 
-    //TODO
+    @MappingColumn(column = "", field = "isStoreAllocated", isRedundant = true)
     private Boolean isStoreAllocated;
 
     @MappingColumn(column = "weight", field = "weight")

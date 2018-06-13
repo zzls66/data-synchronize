@@ -1,22 +1,17 @@
 package com.shbaoyuantech.sync;
 
-import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
-import com.alibaba.otter.canal.protocol.CanalEntry.Column;
-import com.alibaba.otter.canal.protocol.CanalEntry.RowData;
-import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
-import com.alibaba.otter.canal.protocol.CanalEntry.RowChange;
+import com.alibaba.otter.canal.protocol.CanalEntry.*;
 import com.shbaoyuantech.commons.BizException;
 import com.shbaoyuantech.config.ClassMetaConfiguration;
 import com.shbaoyuantech.config.FieldConvertor;
 import com.shbaoyuantech.config.MongoUtils;
-import com.shbaoyuantech.commons.CompanyConstant;
+import com.shbaoyuantech.config.RedundantFieldConvertor;
 import org.apache.commons.lang.StringUtils;
-import org.bson.Document;
-import org.bson.types.ObjectId;
 import org.springframework.util.CollectionUtils;
 
-import java.lang.reflect.Method;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DataSynchronize {
 
@@ -26,76 +21,70 @@ public class DataSynchronize {
 
     private static Map<String, Map<String, Map<String, Object>>> fieldConfiguration;
 
-    private static Map<Class, Method> parseMethods;
+    private static Map<String, Map<String, Map<String, Object>>> redundantFieldConfiguration;
 
     static {
         ClassMetaConfiguration instance = ClassMetaConfiguration.getInstance();
         tableMappingConfiguration = instance.getTableMappingConfiguration();
         isCommonDataConfiguation = instance.getIsCommonDataConfiguration();
         fieldConfiguration = instance.getFieldConfiguration();
-        parseMethods = FieldConvertor.getParseMethodMap();
+        redundantFieldConfiguration = instance.getRedundantFieldConfiguration();
     }
 
-    static void synchronizeData(RowChange rowChange, Entry entry, int company) {
-        String currentTableName = entry.getHeader().getTableName();
+    static void synchronizeData(final RowChange rowChange, Entry entry, final int companyId) {
+        final String currentTableName = entry.getHeader().getTableName();
         String mappingCollectionName = tableMappingConfiguration.get(currentTableName);
         if (StringUtils.isEmpty(mappingCollectionName)) {
             return;
         }
 
         //组装更新或新增字段数据
-        for (RowData rowData : rowChange.getRowDatasList()) {
-            Map<String, Object> data = prepareDataSynchronize(rowData.getAfterColumnsList(), currentTableName, company);
+        for (final RowData rowData : rowChange.getRowDatasList()) {
+            Map<String, Object> data = prepareDataSynchronize(rowData.getAfterColumnsList(), currentTableName, companyId);
 
-            //冗余字段，特殊处理
             if(isTableHavaRedundantField(currentTableName)){
-                Map<String, Object> redundant = handleRedundantField(rowChange.getEventType(), currentTableName, rowData.getAfterColumnsList());
+                Map<String, Object> params = new HashMap<String, Object>(){{
+                   put("tableName", currentTableName);
+                   put("companyId", companyId);
+                   put("columns", rowData.getAfterColumnsList());
+                   //put("fieldConfigs", redundantFieldConfiguration.get(currentTableName));
+                   put("eventType", rowChange.getEventType());
 
-                if(!CollectionUtils.isEmpty(redundant)){
-                    data.putAll(redundant);
-                }
+                }};
+                RedundantFieldConvertor.parse(data, params);
             }
 
             if (rowChange.getEventType().equals(EventType.INSERT)) {
-                insertOne(data, currentTableName, company);
+                insertOne(currentTableName, companyId, data);
             }
 
             if (rowChange.getEventType().equals(EventType.UPDATE)) {
                 int rowId = (int) data.remove("rowId");
-                updateOne(data, currentTableName, rowId, company);
+                updateOne(currentTableName, rowId, companyId, data);
             }
         }
     }
 
-    private static Map<String, Object> prepareDataSynchronize(List<Column> columns, String currentTableName, int company) {
+    private static Map<String, Object> prepareDataSynchronize(List<Column> columns, String currentTableName, final int companyId) {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            for (Column column : columns) {
+            for (final Column column : columns) {
                 boolean isNeedSync = column.getUpdated() && isColumnNeedSync(currentTableName, column.getName());
                 boolean isId = column.getName().equals("id");
 
-                Map<String, Object> currentColumnConfig = fieldConfiguration.get(currentTableName).get(column.getName());
+                final Map<String, Object> currentColumnConfig = fieldConfiguration.get(currentTableName).get(column.getName());
 
                 if (isNeedSync || isId) {
-                    Object mongoValue = null;
-                    Method method = parseMethods.get(currentColumnConfig.get("type"));
-                    if (currentColumnConfig.get("type").equals(ObjectId.class)) {
-                        Boolean isCommonData = isCommonDataConfiguation.get(currentTableName);
+                    final Map<String, Object> params = new HashMap<String, Object>(){{
+                        put("type", currentColumnConfig.get("type"));
+                        put("value", column.getValue());
+                        put("fieldName", currentColumnConfig.get("field"));
+                        put("companyId", companyId);
+                        put("collName", currentColumnConfig.get("refCollection"));
+                    }};
 
-                        if (isCommonData) {
-                            mongoValue = method.invoke(FieldConvertor.class, column.getValue(), currentColumnConfig.get("refCollection"), CompanyConstant.COMMON_FLAG);
-                        }
-                        if (!isCommonData) {
-                            mongoValue = method.invoke(FieldConvertor.class, column.getValue(), currentColumnConfig.get("refCollection"), company);
-                        }
-
-                    }else if(currentColumnConfig.get("type").equals(Date.class)){
-                        mongoValue = method.invoke(FieldConvertor.class, column.getValue(), currentColumnConfig.get("field"), result);
-                    } else {
-                        mongoValue = method.invoke(FieldConvertor.class, column.getValue());
-                    }
-                    result.put((String) currentColumnConfig.get("field"), mongoValue);
+                    FieldConvertor.parse(result, params);
                 }
             }
         } catch (Exception e) {
@@ -105,21 +94,24 @@ public class DataSynchronize {
     }
 
 
-    private static void insertOne(Map<String, Object> data, String currentTableName, int company) {
+    private static void insertOne(String currentTableName, int companyId, Map<String, Object> data) {
         if (CollectionUtils.isEmpty(data)) {
             return;
         }
 
         if (!isCommonDataConfiguation.get(currentTableName)) {
-            data.put("companyId", company);
+            data.put("companyId", companyId);
         }
-        boolean isExist = MongoUtils.checkIdempotent(data, tableMappingConfiguration.get(currentTableName), company);
-        if(isExist){ return; }
-        MongoUtils.insertOne(data, tableMappingConfiguration.get(currentTableName));
+        boolean isNull = MongoUtils.checkIdempotency(tableMappingConfiguration.get(currentTableName), companyId, data);
+        if(!isNull){ return; }
+        MongoUtils.insertOne(tableMappingConfiguration.get(currentTableName), data);
     }
 
-    private static void updateOne(Map<String, Object> data, String currentTableName, int rowId, int company) {
-        MongoUtils.updateOne(data, tableMappingConfiguration.get(currentTableName), rowId, company);
+    private static void updateOne(String currentTableName, final int rowId, final int companyId, Map<String, Object> data) {
+        MongoUtils.updateOne(tableMappingConfiguration.get(currentTableName), new HashMap<String, Object>(){{
+            put("rowId", rowId);
+            put("compnyId", companyId);
+        }}, data);
     }
 
     private static boolean isColumnNeedSync(String tableName, String columnName){
@@ -127,47 +119,7 @@ public class DataSynchronize {
     }
 
     private static boolean isTableHavaRedundantField(String tableName){
-        return tableName.equals("by_lead_history") || tableName.equals("by_contract_submenu");
-    }
-
-    private static Map<String, Object> handleRedundantField(EventType eventType, String tableName, List<Column> columns){
-        Map<String, Object> result = new HashMap<>();
-
-        if(eventType.equals(EventType.INSERT) && tableName.equals("by_lead_history")){
-            Column operatorId = getColumn(columns, "operator_id");
-            ObjectId operatorObjectId = MongoUtils.accessCurrentObjectId(FieldConvertor.accessInt(operatorId.getValue()), "dim_staff", CompanyConstant.COMMON_FLAG);
-            List<Document> documents = MongoUtils.accessDocumentsByObjectId("staff_id", operatorObjectId, "dim_staff_positions", CompanyConstant.COMMON_FLAG);
-
-            List<Integer> roles = new ArrayList<>();
-
-            if(CollectionUtils.isEmpty(documents)){
-                result.put("roles", new ArrayList<>());
-                return result;
-            }
-
-            for(Document document : documents){
-                ObjectId dutyObjectId = document.getObjectId("duty_id");
-                Object role = MongoUtils.accessFieldByCurrentObjectId("rowId", "dim_duty", dutyObjectId);
-                roles.add(Integer.parseInt(String.valueOf(role)));
-            }
-            result.put("roles", roles);
-        }
-
-        if(tableName.equals("by_contract_submenu")){
-            Column ccId = getColumn(columns, "cc_id");
-            result.put("isStoreAllocated", ccId.getValue() == null);
-        }
-
-        return result;
-    }
-
-    private static Column getColumn(List<Column> columns, String columnName){
-        for(Column column : columns){
-            if(column.getName().equals(columnName)){
-                return column;
-            }
-        }
-        return null;
+        return !CollectionUtils.isEmpty(redundantFieldConfiguration.get(tableName));
     }
 
 }

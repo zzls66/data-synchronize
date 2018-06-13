@@ -22,9 +22,7 @@ public class LeadHistoryBean extends BaseBean{
     @MappingColumn(column = "owner_id", field = "owner_id", refCollection = "dim_staff")
     private ObjectId ownerId;
 
-    //TODO
-    //operator_id ->staff_positions中的staff_id 招到duty_id的rowID
-    @MappingColumn(column = "", field = "")
+    @MappingColumn(column = "", field = "roles", isRedundant = true)
     private List<Integer> roles;
 
     @MappingColumn(column = "store_id", field = "store_id", refCollection = "dim_stores")
