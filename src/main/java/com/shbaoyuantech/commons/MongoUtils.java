@@ -1,4 +1,4 @@
-package com.shbaoyuantech.config;
+package com.shbaoyuantech.commons;
 
 import com.google.common.collect.Lists;
 import com.mongodb.MongoClient;
@@ -6,8 +6,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
-import com.shbaoyuantech.commons.CompanyConstant;
-import com.shbaoyuantech.commons.DateUtils;
+import com.shbaoyuantech.config.Configuration;
 import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -16,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -110,7 +108,7 @@ public class MongoUtils {
     }
     private static Bson getFilter(Map<String, Object> filters, int companyId){
         Bson filter = getFilter(filters);
-        if(CompanyConstant.COMMON_FLAG < companyId){
+        if(CompanyType.COMMON < companyId){
             filter = Filters.and(filter, Filters.eq("companyId", companyId));
         }
         return filter;

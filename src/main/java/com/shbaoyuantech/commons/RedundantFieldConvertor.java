@@ -1,8 +1,7 @@
-package com.shbaoyuantech.config;
+package com.shbaoyuantech.commons;
 
-import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
 import com.alibaba.otter.canal.protocol.CanalEntry.Column;
-import com.shbaoyuantech.commons.CompanyConstant;
+import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.springframework.util.CollectionUtils;
@@ -28,9 +27,9 @@ public class RedundantFieldConvertor {
 
         if(tableName.equals("by_lead_history") && enentType == EventType.INSERT){
             final Column operatorId = getColumn(columns, "operator_id");
-            final ObjectId operatorObjectId = MongoUtils.findObjectId("dim_staff", CompanyConstant.COMMON_FLAG,
+            final ObjectId operatorObjectId = MongoUtils.findObjectId("dim_staff", CompanyType.COMMON,
                     new HashMap<String, Object>(){{ put("rowId", Integer.parseInt(operatorId.getValue())); }});
-            List<Document> docs = MongoUtils.findManyBy("dim_staff_positions", CompanyConstant.COMMON_FLAG, new HashMap<String, Object>() {{
+            List<Document> docs = MongoUtils.findManyBy("dim_staff_positions", CompanyType.COMMON, new HashMap<String, Object>() {{
                 put("staff_id", operatorObjectId);
             }});
 
@@ -43,7 +42,7 @@ public class RedundantFieldConvertor {
             for(Document doc : docs){
                 final ObjectId dutyObjectId = doc.getObjectId("duty_id");
                 int id = (int)MongoUtils.findFieldValueBy("dim_duty", "rowId", new HashMap<String, Object>() {{
-                    put("companyId", CompanyConstant.COMMON_FLAG);
+                    put("companyId", CompanyType.COMMON);
                     int id = (int) put("_id", dutyObjectId);
                     roles.add(id);
                 }});

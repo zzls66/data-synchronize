@@ -3,9 +3,9 @@ package com.shbaoyuantech.sync;
 import com.alibaba.otter.canal.protocol.CanalEntry.*;
 import com.shbaoyuantech.commons.BizException;
 import com.shbaoyuantech.config.ClassMetaConfiguration;
-import com.shbaoyuantech.config.FieldConvertor;
-import com.shbaoyuantech.config.MongoUtils;
-import com.shbaoyuantech.config.RedundantFieldConvertor;
+import com.shbaoyuantech.commons.FieldConvertor;
+import com.shbaoyuantech.commons.MongoUtils;
+import com.shbaoyuantech.commons.RedundantFieldConvertor;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.util.CollectionUtils;
 

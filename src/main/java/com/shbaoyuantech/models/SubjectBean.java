@@ -10,7 +10,6 @@ public class SubjectBean extends BaseBean {
     private String name;
 
     public String getName() {
-        Class aClass = this.getClass();
         return name;
     }
 

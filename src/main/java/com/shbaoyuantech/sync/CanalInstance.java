@@ -10,7 +10,7 @@ import com.alibaba.otter.canal.protocol.Message;
 import com.google.common.eventbus.EventBus;
 import com.shbaoyuantech.commons.BizException;
 import com.shbaoyuantech.config.Configuration;
-import com.shbaoyuantech.commons.CompanyConstant;
+import com.shbaoyuantech.commons.CompanyType;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +121,7 @@ public class CanalInstance implements Runnable {
                     entry.getHeader().getSchemaName(), entry.getHeader().getTableName(),
                     eventType));
 
-            int companyId = dateBase.contains("guowen") ? CompanyConstant.GUOWEN_FLAG : (dateBase.contains("guoyi") ? CompanyConstant.GUOYI_FLAG : CompanyConstant.COMMON_FLAG);
+            int companyId = dateBase.contains("guowen") ? CompanyType.GUOWEN : (dateBase.contains("guoyi") ? CompanyType.GUOYI : CompanyType.COMMON);
             DataSynchronize.synchronizeData(rowChange, entry, companyId);
         }
     }

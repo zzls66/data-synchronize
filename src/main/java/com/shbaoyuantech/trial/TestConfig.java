@@ -1,6 +1,6 @@
 package com.shbaoyuantech.trial;
 
-import com.shbaoyuantech.config.FieldConvertor;
+import com.shbaoyuantech.commons.FieldConvertor;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;

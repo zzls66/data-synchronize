@@ -1,6 +1,5 @@
-package com.shbaoyuantech.config;
+package com.shbaoyuantech.commons;
 
-import com.shbaoyuantech.commons.DateUtils;
 import org.apache.commons.lang.StringUtils;
 import org.bson.types.ObjectId;
 
