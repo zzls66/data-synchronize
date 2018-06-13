@@ -1,6 +1,7 @@
 #ignore folder
 **/logs
 target
+**/trial
 
 #ignore files
 **.idea
