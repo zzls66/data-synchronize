@@ -1,6 +1,8 @@
 #ignore folder
-*.log
+**/logs
 target
 
 #ignore files
-data-synchronize.iml
+**.idea
+**.iml
+
