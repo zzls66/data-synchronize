@@ -24,6 +24,7 @@ public class DataSyncWorker {
 
     private RowChange rowChange;
     private int dbCode;
+
     private String table;
     private BeanMetaInfo beanMetaInfo;
     private String collection;
@@ -32,10 +33,13 @@ public class DataSyncWorker {
     public DataSyncWorker(RowChange rowChange, Entry entry, int dbCode) {
         this.rowChange = rowChange;
         this.dbCode = dbCode;
-        this.table = entry.getHeader().getTableName();
-        this.beanMetaInfo = BeanConfiguration.getBeanMetaInfo(table);
-        this.collection = beanMetaInfo.getCollection();
-        this.eventType = rowChange.getEventType();
+
+        table = entry.getHeader().getTableName();
+        beanMetaInfo = BeanConfiguration.getBeanMetaInfo(table);
+        if (beanMetaInfo != null) {
+            collection = beanMetaInfo.getCollection();
+        }
+        eventType = rowChange.getEventType();
     }
 
     public void act() {
