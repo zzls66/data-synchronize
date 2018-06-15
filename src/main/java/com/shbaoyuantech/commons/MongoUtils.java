@@ -46,6 +46,7 @@ public class MongoUtils {
         return Lists.newArrayList(iterable);
     }
 
+    // TODO: preload all dim_date data
     public static ObjectId findDateObjectId(Date date) {
         if (date == null){
             return null;

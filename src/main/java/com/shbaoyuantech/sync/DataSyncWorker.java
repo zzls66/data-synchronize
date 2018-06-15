@@ -139,6 +139,7 @@ public class DataSyncWorker {
         ObjectId operatorId = (ObjectId) data.get("operator_id");
         List<Document> docs = MongoUtils.findManyBy("dim_staff_positions", ImmutableMap.of("staff_id", operatorId));
 
+        // TODO: load duties in one query
         Set<Integer> roles = new HashSet<>();
         docs.forEach(doc -> {
             ObjectId dutyObjectId = doc.getObjectId("duty_id");
