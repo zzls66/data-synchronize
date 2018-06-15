@@ -16,21 +16,26 @@ public final class Configuration {
 
     private Configuration() {}
 
-    public synchronized static Configuration getInstance() throws Exception {
-        if (instance == null) {
-            String env = System.getenv().get("CNHUTONG_BINLOG_ENV");
-            if (env == null) {
-                throw new BizException("error##Configuration::getInstance env CNHUTONG_BINLOG_ENV param not found!");
-            }
-
-            String config = String.format("configuration.%s.properties", env);
-            logger.debug("Configuration::getInstance Configuration file: " + config);
-
-            try (InputStream in = Configuration.class.getClassLoader().getResourceAsStream(config)) {
-                instance = new Configuration();
-                instance.props.load(in);
-            }
+    public synchronized static Configuration getInstance() {
+        if (instance != null) {
+            return instance;
         }
+
+        String env = System.getenv().get("CNHUTONG_BINLOG_ENV");
+        if (env == null) {
+            throw new BizException("error##Configuration::getInstance env CNHUTONG_BINLOG_ENV param not found!");
+        }
+
+        String config = String.format("configuration.%s.properties", env);
+        logger.debug("Configuration::getInstance Configuration file: " + config);
+
+        try (InputStream in = Configuration.class.getClassLoader().getResourceAsStream(config)) {
+            instance = new Configuration();
+            instance.props.load(in);
+        } catch (Exception e) {
+            throw new BizException("error##Failed to load configuration file.", e);
+        }
+
         return instance;
     }
 
