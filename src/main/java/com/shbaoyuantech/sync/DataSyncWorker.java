@@ -23,7 +23,7 @@ public class DataSyncWorker {
     private BeanMetaInfo beanMetaInfo;
     private String collection;
     private CanalEntry.EventType eventType;
-    private FieldHandler fieldHandler;
+    private FieldsHandler fieldsHandler;
 
     public DataSyncWorker(RowChange rowChange, Entry entry, int dbCode) {
         this.rowChange = rowChange;
@@ -35,7 +35,7 @@ public class DataSyncWorker {
             collection = beanMetaInfo.getCollection();
         }
         eventType = rowChange.getEventType();
-        fieldHandler = new FieldHandler(beanMetaInfo, dbCode, eventType);
+        fieldsHandler = new FieldsHandler(beanMetaInfo, dbCode, eventType);
     }
 
     public void act() {
@@ -45,14 +45,14 @@ public class DataSyncWorker {
 
         rowChange.getRowDatasList().forEach(rowData -> {
             Map<BeanMetaInfo.BeanField, String> fieldsWithValue = extractBeanFieldsFromRowColumns(rowData);
-            Map<String, Object> data = fieldHandler.handle(fieldsWithValue);
+            Document doc = fieldsHandler.handle(fieldsWithValue);
 
             if (eventType == CanalEntry.EventType.INSERT) {
-                insertOne(data);
+                insertOne(doc);
             }
 
             if (eventType == CanalEntry.EventType.UPDATE) {
-                updateOne(data);
+                updateOne(doc);
             }
         });
     }
@@ -71,16 +71,16 @@ public class DataSyncWorker {
         return fields;
     }
 
-    private void insertOne(Map<String, Object> data) {
-        Document doc = MongoUtils.findOneBy(collection, buildIdentifierFilter(data.get(ROW_ID)));
-        if (doc != null) {
+    private void insertOne(Document doc) {
+        Document existingDoc = MongoUtils.findOneBy(collection, buildIdentifierFilter(doc.get(ROW_ID)));
+        if (existingDoc != null) {
             return;
         }
-        MongoUtils.insertOne(collection, data);
+        MongoUtils.insertOne(collection, doc);
     }
 
-    private void updateOne(Map<String, Object> data) {
-        MongoUtils.updateOne(collection, buildIdentifierFilter(data.get(ROW_ID)), data);
+    private void updateOne(Document doc) {
+        MongoUtils.updateOne(collection, buildIdentifierFilter(doc.get(ROW_ID)), doc);
     }
 
     private Map<String, Object> buildIdentifierFilter(Object rowId) {

@@ -65,18 +65,17 @@ public class MongoUtils {
         return doc == null ? null : doc.getObjectId("_id");
     }
 
-    public static Document insertOne(String collection, Map<String, Object> data){
-        Document doc = new Document(data);
+    public static Document insertOne(String collection, Document doc){
         getMongoCollection(collection).insertOne(doc);
         return doc;
     }
 
-    public static void updateOne(String collection, Map<String, Object> filters, Map<String, Object> data){
-        if (CollectionUtils.isEmpty(data)) {
+    public static void updateOne(String collection, Map<String, Object> filters, Document doc){
+        if (CollectionUtils.isEmpty(doc)) {
             return;
         }
         Bson filter = buildBsonFilter(filters);
-        getMongoCollection(collection).updateOne(filter, new Document("$set", new Document(data)));
+        getMongoCollection(collection).updateOne(filter, new Document("$set", doc));
     }
 
     private static MongoCollection<Document> getMongoCollection(String collection) {

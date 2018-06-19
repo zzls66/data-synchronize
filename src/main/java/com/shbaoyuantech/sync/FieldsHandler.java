@@ -15,29 +15,28 @@ import java.util.*;
 import static com.shbaoyuantech.commons.Constants.DB_CODE;
 import static com.shbaoyuantech.commons.Constants.ROW_ID;
 
-public class FieldHandler {
+public class FieldsHandler {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     private int dbCode;
     private BeanMetaInfo beanMetaInfo;
     private CanalEntry.EventType eventType;
 
-    public FieldHandler(BeanMetaInfo beanMetaInfo, int dbCode, CanalEntry.EventType eventType) {
+    public FieldsHandler(BeanMetaInfo beanMetaInfo, int dbCode, CanalEntry.EventType eventType) {
         this.dbCode = dbCode;
         this.beanMetaInfo = beanMetaInfo;
         this.eventType = eventType;
     }
 
-    public Map<String, Object> handle(Map<BeanMetaInfo.BeanField, String> fieldsWithValue) {
-        Map<String, Object> data = new HashMap<String, Object>(){{
-            put(DB_CODE, dbCode);
-        }};
-        fieldsWithValue.forEach((beanField, value) -> data.put(beanField.getField(), convertValue(beanField, value)));
+    public Document handle(Map<BeanMetaInfo.BeanField, String> fieldsWithValue) {
+        Document doc = new Document();
+        doc.append(DB_CODE, dbCode);
+        fieldsWithValue.forEach((beanField, value) -> doc.append(beanField.getField(), convertValue(beanField, value)));
 
-        handleRefDateFields(data);
-        handleSupplementalFieldRoles(data);
+        handleRefDateFields(doc);
+        handleSupplementalFieldRoles(doc);
 
-        return data;
+        return doc;
     }
 
     private Object convertValue(BeanMetaInfo.BeanField beanField, String value) {
@@ -77,38 +76,38 @@ public class FieldHandler {
         return null;
     }
 
-    private void handleRefDateFields(Map<String, Object> data) {
+    private void handleRefDateFields(Document doc) {
         beanMetaInfo.getFields().stream().filter(beanField -> {
             String refDateField = beanField.getRefDateField();
-            return beanField.isSupplemental() && !StringUtils.isEmpty(refDateField) && data.containsKey(refDateField);
+            return beanField.isSupplemental() && !StringUtils.isEmpty(refDateField) && doc.containsKey(refDateField);
         }).forEach(beanField -> {
-            Date refDate = (Date) data.get(beanField.getRefDateField());
+            Date refDate = (Date) doc.get(beanField.getRefDateField());
             if (refDate == null) {
-                data.put(beanField.getField(), null);
+                doc.append(beanField.getField(), null);
                 return;
             }
             ObjectId dateObjectId = MongoUtils.findDateObjectId(refDate);
-            data.put(beanField.getField(), dateObjectId);
+            doc.append(beanField.getField(), dateObjectId);
         });
     }
 
-    private void handleSupplementalFieldRoles(Map<String, Object> data) {
+    private void handleSupplementalFieldRoles(Document doc) {
         if(!"by_lead_history".equals(beanMetaInfo.getTable()) || eventType != CanalEntry.EventType.INSERT) {
             return;
         }
 
-        ObjectId operatorId = (ObjectId) data.get("operator_id");
-        List<Document> docs = MongoUtils.findManyBy("dim_staff_positions", ImmutableMap.of("staff_id", operatorId));
+        ObjectId operatorId = (ObjectId) doc.get("operator_id");
+        List<Document> positions = MongoUtils.findManyBy("dim_staff_positions", ImmutableMap.of("staff_id", operatorId));
 
         // TODO: load duties in one query
         Set<Integer> roles = new HashSet<>();
-        docs.forEach(doc -> {
-            ObjectId dutyObjectId = doc.getObjectId("duty_id");
+        positions.forEach(position -> {
+            ObjectId dutyObjectId = position.getObjectId("duty_id");
             Document duty = MongoUtils.findOneBy("dim_duty", ImmutableMap.of("_id", dutyObjectId));
             if (duty != null) {
                 roles.add(duty.getInteger(ROW_ID));
             }
         });
-        data.put("roles", roles);
+        doc.append("roles", roles);
     }
 }
