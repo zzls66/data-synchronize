@@ -64,7 +64,7 @@ public class DataSyncWorker {
             boolean isId = column.getName().equals("id");
             if (needToSync || isId) {
                 BeanMetaInfo.BeanField beanField = beanMetaInfo.getBeanField(column.getName());
-                fields.put(beanField, column.getValue());
+                fields.put(beanField, column.getIsNull() ? null : column.getValue());
             }
         });
 
