@@ -20,6 +20,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import static com.shbaoyuantech.commons.Constants.DB_CODE;
+import static com.shbaoyuantech.commons.Constants.ROW_ID;
+
 public class MongoUtils {
     private static Logger logger = LoggerFactory.getLogger(MongoUtils.class);
 
@@ -33,6 +36,10 @@ public class MongoUtils {
         } catch (Exception e) {
             logger.error("Error", e);
         }
+    }
+
+    public static Map<String, Object> buildIdentifierFilter(int rowId, int dbCode) {
+        return ImmutableMap.of(ROW_ID, rowId, DB_CODE, dbCode);
     }
 
     public static Document findOneBy(String collection, Map<String, Object> filters) {
