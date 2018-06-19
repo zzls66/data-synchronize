@@ -3,6 +3,7 @@ package com.shbaoyuantech.sync;
 import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.google.common.collect.ImmutableMap;
 import com.shbaoyuantech.commons.MongoUtils;
+import com.shbaoyuantech.config.BeanConfiguration;
 import com.shbaoyuantech.config.BeanMetaInfo;
 import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
@@ -13,6 +14,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static com.shbaoyuantech.commons.Constants.DB_CODE;
+import static com.shbaoyuantech.commons.Constants.DB_CODE_COMMON;
 import static com.shbaoyuantech.commons.Constants.ROW_ID;
 
 public class FieldsHandler {
@@ -67,7 +69,8 @@ public class FieldsHandler {
         }
         if (fieldType.equals(ObjectId.class)) {
             String collection = beanField.getRefCollection();
-            Document doc = MongoUtils.findOneBy(collection, MongoUtils.buildIdentifierFilter(Integer.parseInt(value), dbCode));
+            int refDbCode = beanField.isRefCollctionCommon() ? DB_CODE_COMMON : dbCode;
+            Document doc = MongoUtils.findOneBy(collection, MongoUtils.buildIdentifierFilter(Integer.parseInt(value), refDbCode));
             if (doc != null) {
                 return doc.getObjectId("_id");
             }

@@ -3,7 +3,7 @@ package com.shbaoyuantech.beans;
 import com.shbaoyuantech.annotations.MappingBean;
 import com.shbaoyuantech.annotations.MappingColumn;
 
-@MappingBean(table = "by_department", collection = "dim_departments")
+@MappingBean(table = "by_department", collection = "dim_departments", isCommon = true)
 public class DepartmentBean extends BaseBean {
 
     @MappingColumn(column = "name", field = "name")

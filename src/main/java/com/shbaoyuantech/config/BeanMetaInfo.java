@@ -8,6 +8,7 @@ import java.util.List;
 public class BeanMetaInfo {
     private String table;
     private String collection;
+    private boolean isCommon;
 
     private List<BeanField> fields = new ArrayList<>();
 
@@ -54,14 +55,31 @@ public class BeanMetaInfo {
         this.collection = collection;
     }
 
+    public boolean isCommon() {
+        return isCommon;
+    }
+
+    public void setCommon(boolean common) {
+        isCommon = common;
+    }
+
     public static class BeanField {
         private String column;
         private String field;
         private Class fieldType;
         private Class<? extends BaseBean> refBean;
         private String refCollection;
+        private boolean isRefCollctionCommon;
         private String refDateField;
         private boolean supplemental;
+
+        public boolean isRefCollctionCommon() {
+            return isRefCollctionCommon;
+        }
+
+        public void setRefCollctionCommon(boolean refCollctionCommon) {
+            isRefCollctionCommon = refCollctionCommon;
+        }
 
         public String getRefCollection() {
             return refCollection;

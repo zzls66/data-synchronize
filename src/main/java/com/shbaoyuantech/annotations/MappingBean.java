@@ -8,4 +8,5 @@ import java.lang.annotation.*;
 public @interface MappingBean {
     String table();
     String collection();
+    boolean isCommon() default false;
 }

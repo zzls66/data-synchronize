@@ -20,6 +20,7 @@ public class BeanConfiguration {
             BeanMetaInfo beanMetaInfo = new BeanMetaInfo();
             beanMetaInfo.setTable(beanMapping.table());
             beanMetaInfo.setCollection(beanMapping.collection());
+            beanMetaInfo.setCommon(beanMapping.isCommon());
 
             List<Field> fields = getAllMappingFields(bean);
             fields.forEach(field ->  {
@@ -49,7 +50,9 @@ public class BeanConfiguration {
             beanMetaInfo.getFields().forEach(beanField -> {
                 Class refBean = beanField.getRefBean();
                 if (refBean != null) {
-                    beanField.setRefCollection(metaInfoMap.get(refBean).getCollection());
+                    BeanMetaInfo metaInfo = metaInfoMap.get(refBean);
+                    beanField.setRefCollection(metaInfo.getCollection());
+                    beanField.setRefCollctionCommon(metaInfo.isCommon());
                 }
             })
         );
@@ -72,5 +75,9 @@ public class BeanConfiguration {
 
     public static BeanMetaInfo getBeanMetaInfo(String table) {
         return metaInfoMap.get(table);
+    }
+
+    public static BeanMetaInfo getBeanMetaInfo(Class<? extends BaseBean> bean) {
+        return metaInfoMap.get(bean);
     }
 }

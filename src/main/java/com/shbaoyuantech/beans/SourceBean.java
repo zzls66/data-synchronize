@@ -4,7 +4,7 @@ import com.shbaoyuantech.annotations.MappingBean;
 import com.shbaoyuantech.annotations.MappingColumn;
 import org.bson.types.ObjectId;
 
-@MappingBean(table = "by_source", collection = "dim_sources")
+@MappingBean(table = "by_source", collection = "dim_sources", isCommon = true)
 public class SourceBean extends BaseBean {
 
     @MappingColumn(column = "name", field = "name")

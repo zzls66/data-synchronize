@@ -3,7 +3,7 @@ package com.shbaoyuantech.beans;
 import com.shbaoyuantech.annotations.MappingBean;
 import com.shbaoyuantech.annotations.MappingColumn;
 
-@MappingBean(table = "by_store", collection = "dim_stores")
+@MappingBean(table = "by_store", collection = "dim_stores", isCommon = true)
 public class StoreBean extends BaseBean {
 
     @MappingColumn(column = "company_id", field = "companyId")

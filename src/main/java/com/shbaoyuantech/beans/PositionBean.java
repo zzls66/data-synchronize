@@ -4,7 +4,7 @@ import com.shbaoyuantech.annotations.MappingBean;
 import com.shbaoyuantech.annotations.MappingColumn;
 import org.bson.types.ObjectId;
 
-@MappingBean(table = "by_position", collection = "dim_position")
+@MappingBean(table = "by_position", collection = "dim_position", isCommon = true)
 public class PositionBean extends BaseBean {
 
     @MappingColumn(column = "name", field = "name")
