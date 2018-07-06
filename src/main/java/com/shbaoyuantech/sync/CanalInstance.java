@@ -7,10 +7,8 @@ import com.alibaba.otter.canal.protocol.CanalEntry.EntryType;
 import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
 import com.alibaba.otter.canal.protocol.CanalEntry.RowChange;
 import com.alibaba.otter.canal.protocol.Message;
-import com.google.common.eventbus.EventBus;
 import com.shbaoyuantech.commons.BizException;
 import com.shbaoyuantech.config.Configuration;
-import com.shbaoyuantech.commons.CompanyType;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,39 +18,44 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.shbaoyuantech.commons.Constants.*;
+
 public class CanalInstance implements Runnable {
     private static Logger logger = LoggerFactory.getLogger(CanalInstance.class);
 
-    private static Configuration config;
+    private static Configuration config = Configuration.getInstance();
 
     private String canalDestination;
+    private String database;
+    private Status status;
 
-    private String dateBase;
-
-    public CanalInstance(String canalDestination, String dateBase) {
+    public CanalInstance(String canalDestination, String database) {
         this.canalDestination = canalDestination;
-        this.dateBase = dateBase;
+        this.database = database;
     }
 
-    /**
-     * 主方法：建立canal连接，监听数据是否变化
-     *
-     * @throws Exception
-     * @author liu
-     */
-    private void process() throws Exception {
-        config = Configuration.getInstance();
+    @Override
+    public void run() {
+        try {
+            status = Status.INIT;
+            process();
+        } catch (BizException e) {
+            logger.error("bizException::", e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-        if (StringUtils.isEmpty(this.canalDestination) || StringUtils.isEmpty(this.dateBase)) {
-            throw new RuntimeException("error##CanalInstance::process, canalDestination or dataBase can not be null!");
+    private void process() throws Exception {
+        if (StringUtils.isEmpty(canalDestination) || StringUtils.isEmpty(database)) {
+            throw new RuntimeException("error##CanalInstance::process, canalDestination or database can not be null!");
         }
 
-        //建立与canal服务器的连接
         CanalConnector connector = null;
         try {
             connector = CanalConnectors.newSingleConnector(
                     new InetSocketAddress(config.getCanalHost(), config.getCanalPort()),
-                    this.canalDestination,
+                    canalDestination,
                     config.getCanalUsername(), config.getCanalPassword());
 
             connector.connect();
@@ -73,32 +76,28 @@ public class CanalInstance implements Runnable {
                 parseEntries(message.getEntries());
                 connector.ack(batchId);
 
-                resetRetryTimes(Thread.currentThread());
-                //todo thread 挂了 能否拿到handler
+                if (status == Status.INIT) {
+                    ExceptionHandler handler = (ExceptionHandler) Thread.currentThread().getUncaughtExceptionHandler();
+                    handler.resetMaxRetryTimes();
+                    status = Status.PROCESSING;
+                }
             }
         } finally {
             if (connector != null) {
-                connector.disconnect();
+                try {
+                    connector.disconnect();
+                } catch (Exception e) {
+                    logger.error("Internal Error:", e);
+                }
             }
+            status = Status.FINISHED;
         }
     }
 
-    private void resetRetryTimes(Thread thread){
-        EventBus eventBus = new EventBus();
-        eventBus.register(new ByCanalApplication());
-        eventBus.post(thread);
-    }
-
-    /**
-     * 解析entries
-     *
-     * @param entries
-     * @anthor liu
-     */
     private void parseEntries(List<Entry> entries) {
-        for (Entry entry : entries) {
+        entries.forEach(entry -> {
             if (isTransactionOperation(entry) || isDatabaseIgnored(entry) || isTableIgnored(entry)) {
-                continue;
+                return;
             }
             RowChange rowChange;
             try {
@@ -109,11 +108,13 @@ public class CanalInstance implements Runnable {
 
             EventType eventType = rowChange.getEventType();
             if (eventType == EventType.QUERY) {
-                continue;
+                return;
             }
 
             if (eventType == EventType.DELETE) {
-                throw new RuntimeException("error##CanalInstance::parseEntries, delete operation is illegal." + entry.toString());
+                // TODO: sync to delete data
+                logger.error("error##CanalInstance::parseEntries, delete operation is illegal." + entry.toString());
+                return;
             }
 
             logger.debug(String.format("================> binlog[%s:%s] , name[%s,%s] , eventType : %s",
@@ -121,9 +122,9 @@ public class CanalInstance implements Runnable {
                     entry.getHeader().getSchemaName(), entry.getHeader().getTableName(),
                     eventType));
 
-            int companyId = dateBase.contains("guowen") ? CompanyType.GUOWEN : (dateBase.contains("guoyi") ? CompanyType.GUOYI : CompanyType.COMMON);
-            DataSynchronize.synchronizeData(rowChange, entry, companyId);
-        }
+            int dbCode = database.contains("guowen") ? DB_CODE_GUOWEN : (database.contains("guoyi") ? DB_CODE_GUOYI : DB_CODE_COMMON);
+            new DataSyncWorker(rowChange, entry, dbCode).act();
+        });
     }
 
     private static boolean isTransactionOperation(Entry entry) {
@@ -131,8 +132,7 @@ public class CanalInstance implements Runnable {
     }
 
     private boolean isDatabaseIgnored(Entry entry) {
-        String currentDataBase = this.dateBase;
-        return !currentDataBase.equalsIgnoreCase(entry.getHeader().getSchemaName());
+        return !database.equalsIgnoreCase(entry.getHeader().getSchemaName());
     }
 
     private static boolean isTableIgnored(Entry entry) {
@@ -141,14 +141,7 @@ public class CanalInstance implements Runnable {
         return !m.matches();
     }
 
-    @Override
-    public void run() {
-        try {
-            process();
-        } catch (BizException e){
-            logger.error("bizException::", e);
-        }catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    private enum Status {
+        INIT, PROCESSING, FINISHED
     }
 }

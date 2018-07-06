@@ -7,9 +7,9 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     private static Logger logger = LoggerFactory.getLogger(ExceptionHandler.class);
 
-    private static int RETRY_INTERVAL = 5000;
+    private static final int RETRY_INTERVAL = 5000;
 
-    public static int MAX_RETRY_TIMES = 3;
+    private static final int MAX_RETRY_TIMES = 3;
 
     private CanalInstance canalInstance;
     private Integer retryTimes = MAX_RETRY_TIMES;
@@ -27,25 +27,29 @@ public class ExceptionHandler implements Thread.UncaughtExceptionHandler {
     }
 
     @Override
-    public void uncaughtException(Thread t, Throwable e) {
-        ExceptionHandler handler = (ExceptionHandler)t.getUncaughtExceptionHandler();
+    public void uncaughtException(Thread t, Throwable throwable) {
+        ExceptionHandler handler = (ExceptionHandler) t.getUncaughtExceptionHandler();
 
-        if(isLastRetry(handler)){
-            logger.error("error##ByCanalApplication, the last retry is unsuccessful, canalInstance is" + canalInstance, e);
+        if (isLastRetry(handler)) {
+            logger.error("error##ByCanalApplication, the last retry is unsuccessful, canalInstance is" + canalInstance, throwable);
+            return;
         }
 
         try {
             Thread.sleep(RETRY_INTERVAL);
-        } catch (InterruptedException e1) {
-            e1.printStackTrace();
+        } catch (InterruptedException e) {
+            logger.error("Internal Error: " + e);
+            return;
         }
 
-        if(!isLastRetry(handler)){
-            logger.info("ByCanalApplication canalInstance:" + canalInstance + "retry, remainder is " + retryTimes);
+        logger.info("ByCanalApplication canalInstance:" + canalInstance + "retry, remainder is " + retryTimes);
 
-            handler.setRetryTimes(handler.getRetryTimes() - 1);
-            ByCanalApplication.startCanalInstanceThread(canalInstance, handler);
-        }
+        handler.setRetryTimes(handler.getRetryTimes() - 1);
+        ByCanalApplication.startProcessingThread(canalInstance, handler);
+    }
+
+    public void resetMaxRetryTimes() {
+        retryTimes = MAX_RETRY_TIMES;
     }
 
     private static boolean isLastRetry(ExceptionHandler handler){

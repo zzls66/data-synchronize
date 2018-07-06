@@ -1,4 +1,4 @@
-package com.shbaoyuantech.models;
+package com.shbaoyuantech.beans;
 
 import com.shbaoyuantech.annotations.MappingBean;
 import com.shbaoyuantech.annotations.MappingColumn;
@@ -8,12 +8,4 @@ public class SubjectBean extends BaseBean {
 
     @MappingColumn(column = "name", field = "name")
     private String name;
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
 }
